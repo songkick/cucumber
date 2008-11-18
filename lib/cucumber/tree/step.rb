@@ -20,7 +20,7 @@ module Cucumber
       end
       
       def length
-        keyword.length + 1 + name.length
+        keyword.jlength + 1 + name.jlength
       end
 
       if defined?(JRUBY_VERSION)
@@ -95,6 +95,7 @@ module Cucumber
       def initialize(scenario, keyword, name, line)
         @scenario, @keyword, @name, @line = scenario, keyword, name, line
         @extra_args = []
+        @arity = 0
       end
 
       def regexp_args_proc(step_mother)

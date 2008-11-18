@@ -2,7 +2,7 @@ module Cucumber
   module Tree
     class BaseScenario
       attr_reader :feature
-      
+
       def file
         @feature.file
       end
@@ -26,11 +26,16 @@ module Cucumber
         raise "Couldn't find #{step} among #{steps}" if i.nil?
         steps[i-1]
       end
+      
+      def pending?
+        steps.empty?
+      end
+      
     end
 
     class Scenario < BaseScenario
       MIN_PADDING = 2
-      INDENT = 2 
+      INDENT = 2
 
       # If a table follows, the header will be stored here. Weird, but convenient.
       attr_reader :table_header
@@ -42,10 +47,12 @@ module Cucumber
         @steps_and_given_scenarios = []
         instance_eval(&proc) if block_given?
       end
+
       def table_header=  header
         @table_header = header
         update_table_column_widths header
       end
+
       def steps
         @steps ||= @steps_and_given_scenarios.map{|step| step.steps}.flatten
       end
@@ -59,7 +66,7 @@ module Cucumber
       end
 
       def length
-        @length ||= Cucumber.language['scenario'].length + 2 + (@name.nil? ? 0 : @name.length)
+        @length ||= Cucumber.language['scenario'].jlength + 2 + (@name.nil? ? 0 : @name.jlength)
       end
 
       def max_line_length
@@ -86,6 +93,7 @@ module Cucumber
         @table_column_widths ||= [0] * values.size
         @table_column_widths = @table_column_widths.zip(values).map {|max, value| [max, value.size].max}
       end
+
       def row?
         false
       end
@@ -136,8 +144,19 @@ module Cucumber
         @template_scenario.name
       end
 
+      #We can only cache steps once the template scenarios steps have been bound in order to know what arity the steps have
       def steps
-        @steps ||= @template_scenario.steps.map do |template_step|
+        if template_steps_bound?
+          @unbound_steps = nil
+          @steps ||= build_steps
+        else
+          @unbound_steps ||= build_steps
+        end
+      end
+      
+      private
+      def build_steps
+        @template_scenario.steps.map do |template_step|
           args = []
           template_step.arity.times do
             args << @values.shift
@@ -145,6 +164,11 @@ module Cucumber
           RowStep.new(self, template_step, args)
         end
       end
+      
+      def template_steps_bound?
+        @template_steps_bound ||= @template_scenario.steps.inject(0) { |arity_sum, step| arity_sum + step.arity } != 0
+      end
+      
     end
   end
 end
